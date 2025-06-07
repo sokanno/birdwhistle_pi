@@ -1,3 +1,6 @@
+r"came\s+back\s+to\s+standby\s+pos.*?totalangle:\s*([-+]?\d+(?:\.\d+)?)",# -*- coding: utf-8 -*-
+
+
 # ===== rewriten header (Mac / Raspberry Pi 両対応) =====
 import sys
 import glob
@@ -16,11 +19,13 @@ import re
 import argparse, sys
 
 # 「song done … msec … totalAngle: …」を拾うパターン
-DONE_RE = re.compile(
-    r"song\s+done.*?took\s+(\d+)\s*msec.*?totalangle:\s*([\d.]+)",
-    re.IGNORECASE
-)
+#DONE_RE = re.compile(
+#    r"came\s+back\s+to\s+standby\s+pos.*?totalangle:\s*([-+]?\d+(?:\.\d+)?)",
+#    re.IGNORECASE
+#)
 # ==========================================
+CAME_BACK_RE = re.compile(r"came\s+back\s+to\s+standby\s+pos", re.IGNORECASE)
+
 
 try:
     import serial         # PySerial
@@ -91,11 +96,12 @@ def serial_reader():
                 print("受信:", raw)
 
                 # ▼ "song done" 行を正規表現で判定
-                m = DONE_RE.search(raw)
+                m = CAME_BACK_RE.search(raw)
                 if m:
-                    took_ms     = int(m.group(1))     # 再生時間 [ms]
-                    total_angle = float(m.group(2))   # totalAngle
-                    print(f"[DEBUG] took={took_ms} ms, totalAngle={total_angle}")
+                    print("[DEBUG] came back detected")
+                    #took_ms     = int(m.group(1))     # 再生時間 [ms]
+                    #total_angle = float(m.group(2))   # totalAngle
+                    #print(f"[DEBUG] took={took_ms} ms, totalAngle={total_angle}")
 
                     # ─── 休憩長さを決定 ─────────────────
                     songs_since_long_rest += 1
@@ -196,19 +202,19 @@ def generate_and_send_song():
         repetitions = [generate_repetition_based_on_stats(d, repetition_distribution) for d in durations]
         
         # posTop と posBack の生成
-        posTop = [random.randint(0, 450) for _ in range(num_elements)]
-        posBack = [random.randint(top, top + 450) for top in posTop]
+        posTop = [random.randint(50, 200) for _ in range(num_elements)]
+        posBack = [random.randint(top, top + 300) for top in posTop]
         
         # 追加：sValvPttn（0〜3の乱数）と bValvPttn（0〜2の乱数）の生成
         # sValvPttn = [random.randint(0, 3) for _ in range(num_elements)]
-        bValvPttn = [random.randint(0, 2) for _ in range(num_elements)]
+        # bValvPttn = [random.randint(0, 2) for _ in range(num_elements)]
         
         # 追加：pumpFlowRate（20〜50の乱数）
-        pumpFlowRate = [random.randint(20, 40) for _ in range(num_elements)]
+        # pumpFlowRate = [random.randint(20, 40) for _ in range(num_elements)]
 
         # 送信メッセージの生成（CSV形式）
         # 順番は： total_duration, num_elements, durations, repetitions, posTop, posBack, sValvPttn, bValvPttn
-        message_parts = [total_duration, num_elements] + durations + repetitions + posTop + posBack + bValvPttn + pumpFlowRate
+        message_parts = [total_duration, num_elements] + durations + repetitions + posTop + posBack
         message_str = ','.join(map(str, message_parts)) + "\n"
         
         print("送信メッセージ:", message_str)
